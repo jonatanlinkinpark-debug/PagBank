@@ -1,0 +1,324 @@
+```html
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PagBank - Jonatan G. Bernardineli</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            900: '#0a192f',
+                            800: '#112240',
+                            700: '#172a45',
+                            600: '#233554',
+                        },
+                        accent: {
+                            DEFAULT: '#64ffda',
+                            hover: '#4cd8b5',
+                            light: 'rgba(100, 255, 218, 0.1)',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Smooth Transitions & Scrollbars */
+        * {
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .balance-masked {
+            filter: blur(8px);
+            transition: filter 0.3s ease;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(0%); }
+            50% { transform: translateY(100%); }
+            100% { transform: translateY(0%); }
+        }
+
+        .scanner-line {
+            animation: scanline 2.5s infinite ease-in-out;
+        }
+
+        @keyframes toastSlide {
+            0% { transform: translateY(-100%); opacity: 0; }
+            15% { transform: translateY(0); opacity: 1; }
+            85% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-100%); opacity: 0; }
+        }
+
+        .toast-animate {
+            animation: toastSlide 3.5s forwards ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 min-h-screen flex items-center justify-center font-sans text-slate-800 antialiased p-0 sm:p-4">
+
+    <!-- APP SHELL CONTAINER (Simulating Phone Frame on Desktop, Fullscreen on Mobile) -->
+    <div class="w-full max-w-md bg-slate-100 h-[100dvh] sm:h-[880px] sm:rounded-[40px] shadow-2xl flex flex-col overflow-hidden relative border-0 sm:border-[8px] sm:border-slate-800">
+
+        <!-- STATUS BAR (Mobile Visual Simulation) -->
+        <div class="bg-navy-900 text-white px-6 pt-3 pb-1 flex justify-between items-center text-xs font-semibold shrink-0 z-30 select-none">
+            <span>09:41</span>
+            <div class="w-20 h-4 bg-slate-950 rounded-full hidden sm:block mx-auto"></div>
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-signal text-[10px]"></i>
+                <i class="fa-solid fa-wifi text-[10px]"></i>
+                <i class="fa-solid fa-battery-full text-xs text-accent"></i>
+            </div>
+        </div>
+
+        <!-- TOAST NOTIFICATION POPUP -->
+        <div id="toast" class="hidden absolute top-10 left-4 right-4 bg-emerald-600 text-white p-3.5 rounded-2xl shadow-xl z-50 flex items-center space-x-3 text-sm font-medium">
+            <i class="fa-solid fa-circle-check text-xl text-accent"></i>
+            <span id="toast-message">Operação realizada com sucesso!</span>
+        </div>
+
+        <!-- MAIN CONTENT AREA (Rolável) -->
+        <div class="flex-1 overflow-y-auto no-scrollbar relative flex flex-col bg-slate-100">
+
+            <!-- ==================== TELA 1: INÍCIO (HOME) ==================== -->
+            <section id="screen-home" class="screen-view active flex flex-col min-h-full pb-20">
+                <!-- Header Principal -->
+                <header class="bg-navy-900 text-white px-5 pt-4 pb-6 rounded-b-[28px] shadow-lg relative shrink-0">
+                    <!-- Perfil Topo -->
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('perfil')">
+                            <div class="w-12 h-12 rounded-full bg-navy-700 border-2 border-accent/40 flex items-center justify-center text-accent text-lg font-bold shadow-inner">
+                                JGB
+                            </div>
+                            <div class="leading-tight">
+                                <p class="text-xs text-slate-400 font-medium">Olá,</p>
+                                <h1 class="text-sm font-bold text-white tracking-wide max-w-[200px] truncate" title="Jonatan Galiarde Bernardineli">
+                                    Jonatan G. Bernardineli
+                                </h1>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <button onclick="openModal('modal-notifications')" class="w-10 h-10 rounded-full bg-navy-800/80 flex items-center justify-center text-slate-300 hover:text-accent transition relative">
+                                <i class="fa-regular fa-bell text-base"></i>
+                                <span class="absolute top-2 right-2 w-2 h-2 bg-accent rounded-full animate-ping"></span>
+                                <span class="absolute top-2 right-2 w-2 h-2 bg-accent rounded-full"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Balance Card -->
+                    <div class="bg-navy-800/90 backdrop-blur border border-navy-700/60 rounded-2xl p-4 shadow-md">
+                        <div class="flex justify-between items-center text-xs text-slate-400 font-medium mb-1">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-wallet text-accent text-xs"></i> Conta Corrente
+                            </span>
+                            <button onclick="toggleBalanceVisibility()" class="text-slate-400 hover:text-accent transition p-1">
+                                <i id="balance-eye-icon" class="fa-regular fa-eye text-sm"></i>
+                            </button>
+                        </div>
+
+                        <div class="flex items-baseline space-x-1.5 my-1">
+                            <span class="text-slate-400 text-sm font-semibold">R$</span>
+                            <span id="home-balance" class="balance-value text-2xl font-extrabold text-accent tracking-tight">
+                                18.439,89
+                            </span>
+                        </div>
+
+                        <div class="flex items-center justify-between text-[11px] pt-2 border-t border-navy-700/50 mt-2 text-slate-300">
+                            <span class="text-emerald-400 font-medium flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-trend-up text-[10px]"></i> Rendendo 100% do CDI
+                            </span>
+                            <button onclick="switchTab('extrato')" class="text-accent hover:underline font-medium">
+                                Extrato <i class="fa-solid fa-chevron-right text-[9px]"></i>
+                            </button>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Quick Actions Grid -->
+                <div class="px-4 -mt-3 z-10">
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 grid grid-cols-4 gap-y-4 gap-x-2 text-center">
+                        <button onclick="openModal('modal-pix')" class="flex flex-col items-center group">
+                            <div class="w-12 h-12 rounded-2xl bg-accent-light text-navy-900 group-hover:bg-accent flex items-center justify-center text-xl font-bold transition shadow-sm mb-1.5">
+                                <i class="fa-brands fa-pix text-emerald-600 group-hover:text-navy-900"></i>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-700">Pix</span>
+                        </button>
+
+                        <button onclick="openModal('modal-pagar')" class="flex flex-col items-center group">
+                            <div class="w-12 h-12 rounded-2xl bg-slate-100 text-navy-900 group-hover:bg-accent flex items-center justify-center text-lg font-bold transition shadow-sm mb-1.5">
+                                <i class="fa-solid fa-barcode text-slate-700 group-hover:text-navy-900"></i>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-700">Pagar</span>
+                        </button>
+
+                        <button onclick="openModal('modal-transferir')" class="flex flex-col items-center group">
+                            <div class="w-12 h-12 rounded-2xl bg-slate-100 text-navy-900 group-hover:bg-accent flex items-center justify-center text-lg font-bold transition shadow-sm mb-1.5">
+                                <i class="fa-solid fa-paper-plane text-slate-700 group-hover:text-navy-900"></i>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-700">Transferir</span>
+                        </button>
+
+                        <button onclick="openModal('modal-recarga')" class="flex flex-col items-center group">
+                            <div class="w-12 h-12 rounded-2xl bg-slate-100 text-navy-900 group-hover:bg-accent flex items-center justify-center text-lg font-bold transition shadow-sm mb-1.5">
+                                <i class="fa-solid fa-mobile-screen-button text-slate-700 group-hover:text-navy-900"></i>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-700">Recarga</span>
+                        </button>
+
+                        <button onclick="openModal('modal-cartoes')" class="flex flex-col items-center group">
+                            <div class="w-12 h-12 rounded-2xl bg-slate-100 text-navy-900 group-hover:bg-accent flex items-center justify-center text-lg font-bold transition shadow-sm mb-1.5">
+                                <i class="fa-solid fa-credit-card text-slate-700 group-hover:text-navy-900"></i>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-700">Cartões</span>
+                        </button>
+
+                        <button onclick="switchTab('invest')" class="flex flex-col items-center group">
+                            <div class="w-12 h-12 rounded-2xl bg-slate-100 text-navy-900 group-hover:bg-accent flex items-center justify-center text-lg font-bold transition shadow-sm mb-1.5">
+                                <i class="fa-solid fa-chart-line text-slate-700 group-hover:text-navy-900"></i>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-700">Investir</span>
+                        </button>
+
+                        <button onclick="showToast('Sua chave Pix Copia e Cola foi gerada com sucesso!')" class="flex flex-col items-center group">
+                            <div class="w-12 h-12 rounded-2xl bg-slate-100 text-navy-900 group-hover:bg-accent flex items-center justify-center text-lg font-bold transition shadow-sm mb-1.5">
+                                <i class="fa-solid fa-qrcode text-slate-700 group-hover:text-navy-900"></i>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-700">Cobrar</span>
+                        </button>
+
+                        <button onclick="showToast('Funcionalidade de Empréstimos Pré-Aprovados: R$ 15.000,00 disponíveis.')" class="flex flex-col items-center group">
+                            <div class="w-12 h-12 rounded-2xl bg-slate-100 text-navy-900 group-hover:bg-accent flex items-center justify-center text-lg font-bold transition shadow-sm mb-1.5">
+                                <i class="fa-solid fa-hand-holding-dollar text-slate-700 group-hover:text-navy-900"></i>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-700">Empréstimo</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Banners Promocionais -->
+                <div class="px-4 mt-4">
+                    <div class="bg-gradient-to-r from-navy-900 to-navy-800 text-white p-4 rounded-2xl shadow-sm relative overflow-hidden flex items-center justify-between border border-navy-700">
+                        <div class="z-10 max-w-[210px]">
+                            <span class="bg-accent/20 text-accent text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Cartão PagBank</span>
+                            <h3 class="text-sm font-bold mt-1">Limite pré-aprovado de R$ 8.500,00</h3>
+                            <p class="text-[11px] text-slate-300 mt-0.5">Sem anuidade e com cashback instantâneo.</p>
+                            <button onclick="openModal('modal-cartoes')" class="mt-2 bg-accent text-navy-900 hover:bg-accent-hover px-3 py-1 rounded-xl text-xs font-bold transition">
+                                Pedir Cartão
+                            </button>
+                        </div>
+                        <i class="fa-solid fa-credit-card text-6xl text-navy-700/50 absolute -right-2 -bottom-2 z-0"></i>
+                    </div>
+                </div>
+
+                <!-- Movimentações Recentes (Home) -->
+                <div class="px-4 mt-5 flex-1">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-sm font-bold text-slate-800">Últimas movimentações</h2>
+                        <button onclick="switchTab('extrato')" class="text-xs font-bold text-navy-900 hover:text-emerald-600 transition">
+                            Ver extrato <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        </button>
+                    </div>
+
+                    <!-- Lista de Itens Recentes -->
+                    <div id="home-transactions-list" class="space-y-2.5">
+                        <!-- JS Rendered Dynamic Transactions -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================== TELA 2: EXTRATO ==================== -->
+            <section id="screen-extrato" class="screen-view hidden flex-col min-h-full pb-20">
+                <header class="bg-navy-900 text-white px-5 pt-4 pb-5 rounded-b-[24px] shadow-md sticky top-0 z-20">
+                    <div class="flex items-center justify-between mb-3">
+                        <h1 class="text-base font-bold">Extrato da Conta</h1>
+                        <button onclick="showToast('Extrato exportado em PDF com sucesso!')" class="text-xs text-accent bg-navy-800 border border-navy-700 px-2.5 py-1 rounded-xl flex items-center gap-1 font-medium hover:bg-navy-700 transition">
+                            <i class="fa-solid fa-file-pdf"></i> Baixar PDF
+                        </button>
+                    </div>
+
+                    <!-- Search Box -->
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+                        <input type="text" id="extrato-search" oninput="filterExtrato()" placeholder="Buscar estabelecimento ou valor..." class="w-full bg-navy-800/90 text-white text-xs rounded-xl pl-9 pr-4 py-2.5 outline-none border border-navy-700 focus:border-accent placeholder-slate-400 transition">
+                    </div>
+
+                    <!-- Filter Tabs -->
+                    <div class="flex space-x-2 mt-3 overflow-x-auto no-scrollbar text-xs font-medium pt-1">
+                        <button onclick="setExtratoFilter('todos')" class="extrato-filter-btn active bg-accent text-navy-900 px-3 py-1 rounded-full whitespace-nowrap font-bold transition">Todos</button>
+                        <button onclick="setExtratoFilter('pix')" class="extrato-filter-btn bg-navy-800 text-slate-300 px-3 py-1 rounded-full whitespace-nowrap hover:text-white transition">Pix</button>
+                        <button onclick="setExtratoFilter('entrada')" class="extrato-filter-btn bg-navy-800 text-slate-300 px-3 py-1 rounded-full whitespace-nowrap hover:text-white transition">Entradas</button>
+                        <button onclick="setExtratoFilter('saida')" class="extrato-filter-btn bg-navy-800 text-slate-300 px-3 py-1 rounded-full whitespace-nowrap hover:text-white transition">Saídas</button>
+                    </div>
+                </header>
+
+                <div class="p-4 space-y-4">
+                    <!-- Resumo Mensal Card -->
+                    <div class="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-sm flex justify-between items-center text-xs">
+                        <div>
+                            <span class="text-slate-400 font-medium">Entradas (Outubro)</span>
+                            <p class="text-emerald-600 font-extrabold text-sm mt-0.5">+ R$ 6.970,00</p>
+                        </div>
+                        <div class="h-8 w-[1px] bg-slate-200"></div>
+                        <div>
+                            <span class="text-slate-400 font-medium">Saídas (Outubro)</span>
+                            <p class="text-slate-800 font-extrabold text-sm mt-0.5">- R$ 494,40</p>
+                        </div>
+                    </div>
+
+                    <!-- List Content -->
+                    <div id="full-transactions-list" class="space-y-2.5">
+                        <!-- JS Rendered Dynamic Extrato List -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================== TELA 3: INVESTIMENTOS ==================== -->
+            <section id="screen-invest" class="screen-view hidden flex-col min-h-full pb-20">
+                <header class="bg-navy-900 text-white px-5 pt-4 pb-6 rounded-b-[24px] shadow-md">
+                    <h1 class="text-base font-bold mb-1">Investimentos</h1>
+                    <p class="text-xs text-slate-400">Multiplique seu patrimônio com a segurança PagBank</p>
+
+                    <!-- Total Invested Card -->
+                    <div class="bg-navy-800 rounded-2xl p-4 mt-4 border border-navy-700">
+                        <span class="text-xs text-slate-400">Total investido</span>
+                        <div class="flex items-baseline space-x-1 mt-1">
+                            <span class="text-slate-400 text-sm font-semibold">R$</span>
+                            <span class="balance-value text-2xl font-extrabold text-accent">12.500,00</span>
+                        </div>
+                        <p class="text-[11px] text-emerald-400 mt-1 font-medium flex items-center gap-1">
+                            <i class="fa-solid fa-arrow-trend-up"></i> + R$ 482,30 (+3,86%) este mês
+                        </p>
+                    </div>
+                </header>
+
+                <div class="p-4 space-y-4">
+                    <!-- Rendimento Visual Chart Simulation -->
+                    <div class="bg-white rounded-2xl p-4 
